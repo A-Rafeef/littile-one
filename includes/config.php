@@ -25,12 +25,26 @@ if (ENVIRONMENT === 'production') {
 
 // ============================================
 // DATABASE CONFIGURATION
+// Supports dynamic database drivers (MySQL/PostgreSQL) and environment variables
 // ============================================
 
-define('DB_HOST', 'localhost');
-define('DB_NAME', 'ziteo_littile');  // Change this to your production database name
-define('DB_USER', 'root');          // Change this to your production database user
-define('DB_PASS', '');              // Change this to your production database password
+$dbUrlStr = getenv('DATABASE_URL') ?: (isset($_ENV['DATABASE_URL']) ? $_ENV['DATABASE_URL'] : '');
+if (!empty($dbUrlStr)) {
+    $dbUrl = parse_url($dbUrlStr);
+    define('DB_DRIVER', 'pgsql');
+    define('DB_HOST', $dbUrl['host'] ?? 'localhost');
+    define('DB_PORT', $dbUrl['port'] ?? '5432');
+    define('DB_NAME', ltrim($dbUrl['path'] ?? 'postgres', '/'));
+    define('DB_USER', $dbUrl['user'] ?? 'postgres');
+    define('DB_PASS', urldecode($dbUrl['pass'] ?? ''));
+} else {
+    define('DB_DRIVER', getenv('DB_DRIVER') ?: 'mysql');
+    define('DB_HOST', getenv('DB_HOST') ?: 'localhost');
+    define('DB_PORT', getenv('DB_PORT') ?: '3306');
+    define('DB_NAME', getenv('DB_NAME') ?: 'ziteo_littile');
+    define('DB_USER', getenv('DB_USER') ?: 'root');
+    define('DB_PASS', getenv('DB_PASS') ?: '');
+}
 define('DB_CHARSET', 'utf8mb4');
 
 
@@ -112,12 +126,25 @@ function getDB(): PDO
     static $pdo = null;
 
     if ($pdo === null) {
-        $dsn = sprintf(
-            'mysql:host=%s;dbname=%s;charset=%s',
-            DB_HOST,
-            DB_NAME,
-            DB_CHARSET
-        );
+        if (DB_DRIVER === 'pgsql') {
+            // PostgreSQL DSN (typically Supabase)
+            // Postgres DSN does not support charset, it auto-detects from client settings/database settings.
+            // Port is required as Supabase often uses 6543 or 5432.
+            $dsn = sprintf(
+                'pgsql:host=%s;port=%s;dbname=%s;sslmode=require',
+                DB_HOST,
+                defined('DB_PORT') ? DB_PORT : '5432',
+                DB_NAME
+            );
+        } else {
+            // MySQL DSN (typically local XAMPP)
+            $dsn = sprintf(
+                'mysql:host=%s;dbname=%s;charset=%s',
+                DB_HOST,
+                DB_NAME,
+                DB_CHARSET
+            );
+        }
 
         $options = [
             PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION,

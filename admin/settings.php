@@ -24,9 +24,15 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         ];
 
         foreach ($settings as $key => $value) {
-            $stmt = $db->prepare("INSERT INTO settings (setting_key, setting_value) VALUES (?, ?) 
-                                  ON DUPLICATE KEY UPDATE setting_value = ?");
-            $stmt->execute([$key, $value, $value]);
+            if (DB_DRIVER === 'pgsql') {
+                $stmt = $db->prepare("INSERT INTO settings (setting_key, setting_value) VALUES (?, ?) 
+                                      ON CONFLICT (setting_key) DO UPDATE SET setting_value = EXCLUDED.setting_value");
+                $stmt->execute([$key, $value]);
+            } else {
+                $stmt = $db->prepare("INSERT INTO settings (setting_key, setting_value) VALUES (?, ?) 
+                                      ON DUPLICATE KEY UPDATE setting_value = ?");
+                $stmt->execute([$key, $value, $value]);
+            }
         }
 
         setFlash('success', 'Settings saved successfully');

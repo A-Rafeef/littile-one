@@ -52,10 +52,18 @@ class FeatureGate
     public static function unlock(int $userId, string $feature, string $reason): void
     {
         $db = getDB();
-        $stmt = $db->prepare("
-            INSERT IGNORE INTO user_feature_flags (user_id, feature_key, unlock_reason) 
-            VALUES (?, ?, ?)
-        ");
+        if (DB_DRIVER === 'pgsql') {
+            $stmt = $db->prepare("
+                INSERT INTO user_feature_flags (user_id, feature_key, unlock_reason) 
+                VALUES (?, ?, ?)
+                ON CONFLICT (user_id, feature_key) DO NOTHING
+            ");
+        } else {
+            $stmt = $db->prepare("
+                INSERT IGNORE INTO user_feature_flags (user_id, feature_key, unlock_reason) 
+                VALUES (?, ?, ?)
+            ");
+        }
         $stmt->execute([$userId, $feature, $reason]);
     }
 

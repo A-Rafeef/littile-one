@@ -34,16 +34,29 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 $required = isset($_POST['is_required']) ? 1 : 0;
 
                 if (!empty($name)) {
-                    $stmt = $db->prepare("
-                        INSERT INTO store_product_fields 
-                        (store_id, field_key, display_name, field_type, is_required, is_active)
-                        VALUES (?, ?, ?, ?, ?, 1)
-                        ON DUPLICATE KEY UPDATE 
-                        display_name = VALUES(display_name), 
-                        field_type = VALUES(field_type),
-                        is_required = VALUES(is_required),
-                        is_active = 1
-                    ");
+                    if (DB_DRIVER === 'pgsql') {
+                        $stmt = $db->prepare("
+                            INSERT INTO store_product_fields 
+                            (store_id, field_key, display_name, field_type, is_required, is_active)
+                            VALUES (?, ?, ?, ?, ?, 1)
+                            ON CONFLICT (store_id, field_key) DO UPDATE SET 
+                            display_name = EXCLUDED.display_name, 
+                            field_type = EXCLUDED.field_type,
+                            is_required = EXCLUDED.is_required,
+                            is_active = 1
+                        ");
+                    } else {
+                        $stmt = $db->prepare("
+                            INSERT INTO store_product_fields 
+                            (store_id, field_key, display_name, field_type, is_required, is_active)
+                            VALUES (?, ?, ?, ?, ?, 1)
+                            ON DUPLICATE KEY UPDATE 
+                            display_name = VALUES(display_name), 
+                            field_type = VALUES(field_type),
+                            is_required = VALUES(is_required),
+                            is_active = 1
+                        ");
+                    }
                     $stmt->execute([$storeId, $key, $name, $type, $required]);
                     setFlash('success', 'Field saved successfully');
                 }

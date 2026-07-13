@@ -1,3 +1,16 @@
+# XAMPP & OS Temp Files
+/cgi-bin/
 .DS_Store
 Thumbs.db
-logs/*.log
+
+# Logs
+/logs/*.log
+/logs/error.log
+
+# Backups
+*backup*.php
+index_backup_*.php
+
+# Local Configuration defaults (Optional, environment variables are used)
+.env
+.env.local
